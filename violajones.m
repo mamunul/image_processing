@@ -8,18 +8,13 @@ function P = readTrainImage()
 PositiveTrainingPath = 'faces';
 NegativeTrainingPath = 'nonfaces';
 
-field_no = 'no';
-field_x = 'x';
 
-field_y = 'y';
-field_fw = 'fw';
-field_fh = 'fh';
-field_w = 'w';
-field_h = 'h';
+starttime = generate_datetime();
 
-[I1 m] = readImages(PositiveTrainingPath,'pgm');
+limit = 10;
+[I1 m] = readImages(PositiveTrainingPath,'pgm',limit);
 
-[I2 l] = readImages(NegativeTrainingPath,'jpg');
+[I2 l] = readImages(NegativeTrainingPath,'pgm',limit);
 
 I = cat(3,I1,I2);
 
@@ -35,24 +30,37 @@ feature_list= haarfeature(24);
 % m = j;
 % l = 0;
 feature_count = 1000;
-result = zeros(feature_count,12);
+result = zeros(feature_count,13);
 
-
+ i = 0;
 
 for f_no = 1:feature_count
     
     feature = feature_list(f_no,:);
-    theta(1) = 0;
+    
     lowest_err = 100;
     lowest_t = 0;
     
+    
     w(1,1:m+l) = initialize_weight(m,l);
-    for t = 1:100
+    
+    for p = 1:2
+        
+    polarity = -1;
+    if p == 2
+        polarity = 1;
+    end
+    theta(1) = 0;
+    max = 100;
+    for t = 1:max
+        
         if t >1
-        theta(t) = theta(t-1)+1;
+            theta(t) = theta(t-1)+1;
         end
-        %         integral = I(:,:,i_no);
-        h(t,:) = CheckForFeature(feature,I,theta(t));
+        
+        
+        
+        h(t,:) = CheckForFeature(feature,I,theta(t),polarity);
         epsilon(t) =calc_eps(h(t,:),y,w(t,:));
         alpha(t) = calc_alpha(epsilon(t));
         
@@ -60,61 +68,155 @@ for f_no = 1:feature_count
         error(t) = calculate_error(h(t,:),y,w(t,:));
         
         w(t+1,:) = calc_weight(w(t,:),alpha(t),h(t,:),y);
-   
-            if(error(t) < lowest_err)
-                lowest_err = error(t);
-                lowest_t = t;
-            end
-            
-%             if error(t)>error(t-1)
-%                 
-%                 break;
-%             end
-      
+        
+        if(error(t) < lowest_err)
+            lowest_err = error(t);
+            lowest_t = t;
+        end
+        
+        %             if error(t)>error(t-1)
+        %
+        %                 break;
+        %             end
+        
     end
-   display('feature no------------');
-   disp(f_no);
-%     display('feature------------');
-%     disp(feature);
-%     display('w------------');
-%     disp(w(lowest_t,:));
-%     display('theta------------');
-%     disp(theta(lowest_t));
-%     display('h------------');
-%     disp(h(lowest_t,:));
-%     display('alpha------------');
-%     disp(alpha(lowest_t));
-%     display('epsilon------------');
-%     disp(epsilon(lowest_t));
-%     display('error------------');
-%     disp(error(lowest_t));
-value_no = f_no;
-value_x = double(feature(1));
-value_y = double(feature(2));
-value_fw = double(feature(3));
-value_fh = double(feature(4));
-value_w = double(feature(5));
-value_h = double(feature(6));
-
-% feature_properties = struct(field_no,value_no,field_x,value_x,field_y,value_y,field_fw,value_fw,field_fh,value_fh,field_w,value_w,field_h,value_h);
     
-    result(f_no,:)=[f_no,lowest_t,error(lowest_t),theta(lowest_t),alpha(lowest_t),epsilon(lowest_t),value_x ,value_y,value_fw ,value_fh,value_w ,value_h];
+    i = i+1;
+%     display('feature no------------');
+%     disp(f_no);
+    %     display('feature------------');
+    %     disp(feature);
+    %     display('w------------');
+    %     disp(w(lowest_t,:));
+    %     display('theta------------');
+    %     disp(theta(lowest_t));
+    %     display('h------------');
+    %     disp(h(lowest_t,:));
+    %     display('alpha------------');
+    %     disp(alpha(lowest_t));
+    %     display('epsilon------------');
+    %     disp(epsilon(lowest_t));
+    %     display('error------------');
+    %     disp(error(lowest_t));
+    value_no = f_no;
+    value_x = double(feature(1));
+    value_y = double(feature(2));
+    value_fw = double(feature(3));
+    value_fh = double(feature(4));
+    value_w = double(feature(5));
+    value_h = double(feature(6));
     
+   
+    result(i,:)=[f_no,lowest_t,error(lowest_t),theta(lowest_t),alpha(lowest_t),epsilon(lowest_t),polarity,value_x ,value_y,value_fw ,value_fh,value_w ,value_h];
+    
+    end
 end
 
 
- B = sortrows(result,3);
+B = sortrows(result,3);
 
- R = B(1:feature_count*.01,:);
+R = B(1:feature_count*.01,:);
 
-
+endtime = generate_datetime();
+generateTrainingDb(R,starttime,endtime);
 
 
 
 end
 
 
-function [I m] = readImages(path,extension)
+function dt = generate_datetime()
+
+format shortg;
+c = clock;
+
+dt = [num2str(c(1)),'-',num2str(c(2)),'-',num2str(c(3)),' ',num2str(c(4)),':',num2str(c(5)),':',num2str(c(6))];
+
+
+end
+
+function s = generateTrainingDb(R,starttime,endtime)
+
+docNode = com.mathworks.xml.XMLUtils.createDocument('face-detection');
+
+entry_node = docNode.createElement('feature-list');
+docNode.getDocumentElement.appendChild(entry_node);
+
+[m n] = size(R);
+
+sin1 = create_single_node(docNode,entry_node,'count',m);
+docNode.getDocumentElement.appendChild(sin1);
+% 
+sin2 = create_single_node(docNode,entry_node,'start-time',starttime);
+docNode.getDocumentElement.appendChild(sin2);
+% 
+sin3 = create_single_node(docNode,entry_node,'end-time',endtime);
+docNode.getDocumentElement.appendChild(sin3);
+
+for i = 1:m
+
+  feature_node =  create_feature_node(docNode,entry_node,R(i,:))
+  entry_node.appendChild(feature_node);
+end
+
+xmlFileName = ['facedetection','.xml'];
+xmlwrite(xmlFileName,docNode);
+type(xmlFileName);
+
+end
+
+function feature_node = create_feature_node(docNode,entry_node,f)
+
+ rf_no = f(1);
+ lowest_t = f(2);
+ error = f(3);
+ theta = f(4);
+ alpha = f(5);
+ epsilon = f(6);
+ polarity = f(7);
+ value_x = f(8);
+ value_y = f(9);
+ value_fw = f(10);
+ value_fh = f(11);
+ value_w = f(12);
+ value_h = f(13);
+ 
+ feature_node = docNode.createElement('feature');
+ entry_node.appendChild(feature_node);
+ 
+ sin1 = create_single_node(docNode,feature_node,'error',error);
+ sin2 = create_single_node(docNode,feature_node,'theta',theta);
+ 
+ sin4 = create_single_node(docNode,feature_node,'polarity',polarity);
+sin5 = create_single_node(docNode,feature_node,'x',value_x);
+sin6 = create_single_node(docNode,feature_node,'y',value_y);
+sin7 = create_single_node(docNode,feature_node,'fw',value_fw);
+sin8 = create_single_node(docNode,feature_node,'fh',value_fh);
+sin9 = create_single_node(docNode,feature_node,'w',value_w);
+sin10 = create_single_node(docNode,feature_node,'h',value_h);
+
+ feature_node.appendChild(sin1);
+ feature_node.appendChild(sin2);
+
+ feature_node.appendChild(sin4);
+ feature_node.appendChild(sin5);
+ feature_node.appendChild(sin6);
+ feature_node.appendChild(sin7);
+ feature_node.appendChild(sin8);
+ feature_node.appendChild(sin9);
+ feature_node.appendChild(sin10);
+    
+end
+
+function ct_node = create_single_node(docNode,entry_node,node,text)
+
+ct_node = docNode.createElement(node);
+count_text = docNode.createTextNode(num2str(text));
+ct_node.appendChild(count_text);
+% entry_node.appendChild(count_node);
+end
+
+function [I m] = readImages(path,extension,limit)
 m = 0;
 TrainFiles = dir(path);
 for i = 1:size(TrainFiles,1)
@@ -126,7 +228,7 @@ for i = 1:size(TrainFiles,1)
         m=m+1;
         I(:,:,m) = intimg(24,image);
         
-        if m == 10
+        if m == limit
             break;
         end
     end
@@ -257,7 +359,7 @@ for f=1:featureQuantity
 end
 end
 
-function  h = CheckForFeature(f,Integral,theta)
+function  h = CheckForFeature(f,Integral,theta,polarity)
 
 
 fw = f(5);
@@ -297,9 +399,7 @@ for i=1:number_of_image
             p=p+1;
             Area(p) = A - B - C  + D;
             
-            
         end
-        
     end
     
     h(i) = 0;
@@ -308,12 +408,15 @@ for i=1:number_of_image
         
         AN1 = abs(Area(1)-Area(2));
         AN2 = abs(Area(1)+Area(2));
-        if AN2/AN1 <=1/(1+theta) || AN2/AN1 >=(1+theta)
+        if AN2/AN1 <=1/(1+theta) && polarity == 1
             
             h(i) = 1;
         end
         
-        
+          if polarity == -1 && AN2/AN1 >=(1+theta)
+            
+            h(i) = 1;
+        end
         
     elseif p == 3
         
@@ -323,10 +426,12 @@ for i=1:number_of_image
         AN1 = abs(AN-Area(2));
         AN2 = abs(AN+Area(2));
         
-        if AN2/AN1 <=1/(1+theta) || AN2/AN1 >=(1+theta)
+        if AN2/AN1 <=1/(1+theta) && polarity == 1
             h(i) = 1;
         end
-        
+         if polarity == -1 && AN2/AN1 >=(1+theta)
+            h(i) = 1;
+        end
         
     end
     
@@ -347,8 +452,8 @@ i = imresize(i,[s s]);
 [m,n,k] = size(i);
 
 if(k == 3)
-   i = rgb2gray(i); 
-   [m,n,k] = size(i);
+    i = rgb2gray(i);
+    [m,n,k] = size(i);
 end
 
 I(1:m,1:n) = double (0.0);
