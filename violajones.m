@@ -9,7 +9,7 @@ NegativeTrainingPath = 'nonfaces';
 
 starttime = generate_datetime();
 
-trainig_face_limit = 10; 
+trainig_face_limit = 1; 
 
 [I1 m] = readImages(PositiveTrainingPath,'pgm',trainig_face_limit);
 
@@ -28,7 +28,7 @@ feature_list= haarfeature(24);
 
 % m = j;
 % l = 0;
-feature_count = 10000;
+% feature_count = 10000;
 result = zeros(feature_count,13);
 
  i = 0;
@@ -120,12 +120,10 @@ C=result(result(:,4) >30, :);
 
 B = sortrows(C,3);
 
-R = B(1:200,:);
+R = B(1:2000,:);
 
 endtime = generate_datetime();
-generateTrainingDb(R,starttime,endtime);
-
-
+generateTrainingDb(R,starttime,endtime,trainig_face_limit,feature_count);
 
 end
 
@@ -140,7 +138,7 @@ dt = [num2str(c(1)),'-',num2str(c(2)),'-',num2str(c(3)),' ',num2str(c(4)),':',nu
 
 end
 
-function s = generateTrainingDb(R,starttime,endtime)
+function s = generateTrainingDb(R,starttime,endtime,trainig_face_limit,feature_count)
 
 docNode = com.mathworks.xml.XMLUtils.createDocument('face-detection');
 
@@ -148,6 +146,18 @@ entry_node = docNode.createElement('feature-list');
 docNode.getDocumentElement.appendChild(entry_node);
 
 [m n] = size(R);
+
+sin11 = create_single_node(docNode,entry_node,'code-link','https://github.com/mamunul/image_processing.git');
+docNode.getDocumentElement.appendChild(sin11);
+
+sin12 = create_single_node(docNode,entry_node,'trainig-face-quantity',trainig_face_limit);
+docNode.getDocumentElement.appendChild(sin12);
+
+sin14 = create_single_node(docNode,entry_node,'trainig-nonface-quantity',trainig_face_limit);
+docNode.getDocumentElement.appendChild(sin14);
+
+sin13 = create_single_node(docNode,entry_node,'feature-count',feature_count);
+docNode.getDocumentElement.appendChild(sin13);
 
 sin1 = create_single_node(docNode,entry_node,'count',m);
 docNode.getDocumentElement.appendChild(sin1);
@@ -336,12 +346,12 @@ function feature_list = haarfeature(window)
 
 
 features = [2,1;1,2;3,1;1,3;2,2];
-features = [2,1;1,2;3,1;1,3];
+% features = [2,1;1,2;3,1;1,3];
 
 [featureQuantity,n] = size(features);
 
-feature_list = zeros(141600,6,'uint32');
-
+% feature_list = zeros(141600,6,'uint32');
+feature_list = zeros(162336,6,'uint32');
 t = 0;
 
 for f=1:featureQuantity
