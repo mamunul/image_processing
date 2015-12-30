@@ -1,9 +1,7 @@
 
 
 
-
-
-function P = readTrainImage()
+function P = viola_jones()
 
 PositiveTrainingPath = 'faces';
 NegativeTrainingPath = 'nonfaces';
@@ -11,16 +9,17 @@ NegativeTrainingPath = 'nonfaces';
 
 starttime = generate_datetime();
 
-limit = 10;
-[I1 m] = readImages(PositiveTrainingPath,'pgm',limit);
+trainig_face_limit = 10; 
 
-[I2 l] = readImages(NegativeTrainingPath,'pgm',limit);
+[I1 m] = readImages(PositiveTrainingPath,'pgm',trainig_face_limit);
+
+[I2 l] = readImages(NegativeTrainingPath,'pgm',trainig_face_limit);
 
 I = cat(3,I1,I2);
 
 y1 = ones(1,m);
 y2 = zeros(1,l);
-y = [y1,y2]
+y = [y1,y2];
 
 
 feature_list= haarfeature(24);
@@ -29,7 +28,7 @@ feature_list= haarfeature(24);
 
 % m = j;
 % l = 0;
-feature_count = 1000;
+feature_count = 10000;
 result = zeros(feature_count,13);
 
  i = 0;
@@ -51,7 +50,7 @@ for f_no = 1:feature_count
         polarity = 1;
     end
     theta(1) = 0;
-    max = 100;
+    max = 100 - theta(1);
     for t = 1:max
         
         if t >1
@@ -81,9 +80,9 @@ for f_no = 1:feature_count
         
     end
     
-    i = i+1;
-%     display('feature no------------');
-%     disp(f_no);
+    
+    display('feature no------------');
+    disp(f_no);
     %     display('feature------------');
     %     disp(feature);
     %     display('w------------');
@@ -101,21 +100,27 @@ for f_no = 1:feature_count
     value_no = f_no;
     value_x = double(feature(1));
     value_y = double(feature(2));
-    value_fw = double(feature(3));
-    value_fh = double(feature(4));
-    value_w = double(feature(5));
-    value_h = double(feature(6));
+    value_fw = double(feature(5));
+    value_fh = double(feature(6));
+    value_w = double(feature(3));
+    value_h = double(feature(4));
     
    
+   
+    i = i+1;
     result(i,:)=[f_no,lowest_t,error(lowest_t),theta(lowest_t),alpha(lowest_t),epsilon(lowest_t),polarity,value_x ,value_y,value_fw ,value_fh,value_w ,value_h];
     
     end
 end
 
 
-B = sortrows(result,3);
+% C = sortrows(result,4);
 
-R = B(1:feature_count*.01,:);
+C=result(result(:,4) >30, :);
+
+B = sortrows(C,3);
+
+R = B(1:200,:);
 
 endtime = generate_datetime();
 generateTrainingDb(R,starttime,endtime);
@@ -155,7 +160,7 @@ docNode.getDocumentElement.appendChild(sin3);
 
 for i = 1:m
 
-  feature_node =  create_feature_node(docNode,entry_node,R(i,:))
+  feature_node =  create_feature_node(docNode,entry_node,R(i,:));
   entry_node.appendChild(feature_node);
 end
 
@@ -329,6 +334,8 @@ end
 
 function feature_list = haarfeature(window)
 
+
+features = [2,1;1,2;3,1;1,3;2,2];
 features = [2,1;1,2;3,1;1,3];
 
 [featureQuantity,n] = size(features);
@@ -413,7 +420,7 @@ for i=1:number_of_image
             h(i) = 1;
         end
         
-          if polarity == -1 && AN2/AN1 >=(1+theta)
+        if polarity == -1 && AN2/AN1 >=(1+theta)
             
             h(i) = 1;
         end
@@ -429,7 +436,18 @@ for i=1:number_of_image
         if AN2/AN1 <=1/(1+theta) && polarity == 1
             h(i) = 1;
         end
-         if polarity == -1 && AN2/AN1 >=(1+theta)
+        if polarity == -1 && AN2/AN1 >=(1+theta)
+            h(i) = 1;
+        end
+    elseif p == 4 
+        
+        AN1 = Area(1) + Area(4);
+        AN2 = Area(2) + Area(3);
+        
+        if AN2/AN1 <=1/(1+theta) && polarity == 1
+            h(i) = 1;
+        end
+        if polarity == -1 && AN2/AN1 >=(1+theta)
             h(i) = 1;
         end
         
