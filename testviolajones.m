@@ -18,14 +18,15 @@ faces = zeros(1,4);
 % j = 1;
 while s >= 24
     
+    imshow(image);
     I = intimg(s, image);
 
     f = checkForWindow(features,I,original_s);
     
     if f ~= 0
-    faces = cat(1,faces, f);
+        faces = cat(1,faces, f);
     end
-    s = floor(s*.75);
+    s = floor(s*.75); 
 end
 
 
@@ -51,7 +52,7 @@ for x = 1:p-24
             
             faceFrame(i,1:4) = f;
             
-            i = i +1;
+            i = i + 1;
         end
     end
 end
@@ -68,7 +69,6 @@ function pass = checkForClassifier(features,img_x,img_y,I)
 
 classifier = [5,20,20,20];
 
-
 pass = 1;
 
 [p q] = size(classifier);
@@ -77,7 +77,7 @@ for k = 1:q
  
     if k> 1
        
-        start_c =  end_c+1;
+        start_c =  end_c + 1;
         end_c = start_c + classifier(k);
         
     else
@@ -87,7 +87,7 @@ for k = 1:q
         
     end
 
-    pass = 1;
+    pass = 0;
     
       for i = start_c:end_c
         f1 = features(i,:);
@@ -105,18 +105,18 @@ for k = 1:q
         polarity = f1(3);
         h = CheckForFeature(f,I,theta,polarity);
         
-        if h ~= 1
-   
-            pass = 0;
-            break;
+        if h == 1
+            pass = pass + 1;      
         end
         
       end
-    
-      if pass == 0
+   
+      if pass < floor(classifier(k)*0.90)
+   
+          pass = 0;
+          
           break;
       end
-   
 end
 
   
