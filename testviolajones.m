@@ -2,29 +2,39 @@
 
 function re = identifyFace()
 
-image = 'bc.jpg';
+
+
+ image = 'testface/AJ_Lamas_0001.pgm';
+% image = 'testface/AJ_Cook_0001.pgm';
 
 image = imread(image);
+
+image = imresize(image,[24  24]);
 
 [s t r] = size(image);
 
 original_s = s;
 
-features = trainedFeatures('facedetection_last.xml');
+features1 = trainedFeatures('facedetection_last4.xml');
 
-
-faces = zeros(1,4);
+features = features1;
+ features=features1(features1(:,2) >10, :);
+faces = 0;
 
 % j = 1;
 while s >= 24
     
-    imshow(image);
+%     imshow(image);
     I = intimg(s, image);
 
-    f = checkForWindow(features,I,original_s);
+    f = checkForWindow(features,I,original_s,0.40);
     
     if f ~= 0
-        faces = cat(1,faces, f);
+        [m n] = size(faces);
+        [p q]= size(f);
+        faces(m+1:m+p,1:4)=f;
+        
+        display(size(faces));
     end
     s = floor(s*.75); 
 end
@@ -32,27 +42,32 @@ end
 
 end
 
-function faceFrame = checkForWindow(features,I,original_s)
+function faceFrame = checkForWindow(features,I,original_s,clissifier_threshold)
 
 [p q] = size(I);
 
 i=1;
 faceFrame = 0;
-for x = 1:p-24
+for x = 1:(p+1)-24
     
-    for y = 1:q-24
-        pass = checkForClassifier(features,x,y,I);
-        
-        if  pass == 1
+    for y = 1:(q+1)-24
+        [ppp po]= checkForClassifier(features,x,y,I,clissifier_threshold);
+%          
+        if  po == 1
             
+%             pass(i,1) = ppp;
+           
+          
             f(1) = x * (original_s/p);
             f(2) = y * (original_s/p);
             f(3) = 24 * (original_s/p);
             f(4) = 24 * (original_s/p);
-            
+%             f(5) = ppp;
             faceFrame(i,1:4) = f;
             
-            i = i + 1;
+             i = i + 1;
+%             
+           
         end
     end
 end
@@ -61,7 +76,7 @@ end
 
 end
 
-function pass = checkForClassifier(features,img_x,img_y,I)
+function [passstring pp] = checkForClassifier(features,img_x,img_y,I,clissifier_threshold)
 
 [m n] = size(features);
 
@@ -69,10 +84,10 @@ function pass = checkForClassifier(features,img_x,img_y,I)
 
 classifier = [5,20,20,20];
 
-pass = 1;
+passstring = '';
 
 [p q] = size(classifier);
-
+pp = 1;
 for k = 1:q
  
     if k> 1
@@ -87,7 +102,8 @@ for k = 1:q
         
     end
 
-    pass = 0;
+    pass(k) = 0;
+    
     
       for i = start_c:end_c
         f1 = features(i,:);
@@ -99,26 +115,31 @@ for k = 1:q
         x = f1(4);
         y = f1(5);
 
-        f = [img_x+x,img_y+y,width,height,fw,fh];
+        f = [(img_x-1)+x,(img_y-1)+y,width,height,fw,fh];
         
         theta = f1(2);
         polarity = f1(3);
         h = CheckForFeature(f,I,theta,polarity);
         
         if h == 1
-            pass = pass + 1;      
+            pass(k) = pass(k) + 1;      
         end
         
       end
-   
-      if pass < floor(classifier(k)*0.90)
-   
-          pass = 0;
-          
-          break;
+      passstring = strcat(passstring,{', '},num2str(pass(k)));
+      if pass(k) < floor(classifier(k)*clissifier_threshold)   
+            pp = 0;        
+%           break;
       end
+%       pass = 0; 
 end
 
+
+if pp == 1
+
+    kshfkhl = 9;
+
+end
   
 end
 
@@ -226,8 +247,6 @@ for x = 1: m
 end
 end
 
-
-
 function  h = CheckForFeature(f,Integral,theta,polarity)
 
 
@@ -259,12 +278,15 @@ for i=1:number_of_image
             if  ny >1
                 C = I(nx-1+dx,ny-1);
             end
+            
             if nx >1
                 B = I(nx-1,ny-1+dy);
             end
+            
             if nx >1 && ny >1
                 D = I(nx-1,ny-1);
             end
+            
             p=p+1;
             Area(p) = A - B - C  + D;
             
@@ -273,47 +295,57 @@ for i=1:number_of_image
     
     h(i) = 0;
     
+    diff = 0;
+    
     if p == 2
         
-        AN1 = abs(Area(1)-Area(2));
-        AN2 = abs(Area(1)+Area(2));
-        if AN2/AN1 <=1/(1+theta) && polarity == 1
+        AN1 = Area(1);
+        AN2 = Area(2);
+        if AN2/AN1 <=1/(1+(theta*0.01)) && polarity == 1
             
             h(i) = 1;
+            
         end
         
-        if polarity == -1 && AN2/AN1 >=(1+theta)
+        if AN2/AN1 >=(1+(theta*0.01)) && polarity == -1
             
             h(i) = 1;
+            
         end
         
     elseif p == 3
         
         AN = Area(3)+Area(1);
-        AN = AN/2;
+        AN1 = AN/2;
         
-        AN1 = abs(AN-Area(2));
-        AN2 = abs(AN+Area(2));
+       
+        AN2 = Area(2);
         
-        if AN2/AN1 <=1/(1+theta) && polarity == 1
+        if AN2/AN1 <=1/(1+(theta*0.01)) && polarity == 1
             h(i) = 1;
+            
         end
-        if polarity == -1 && AN2/AN1 >=(1+theta)
+        if AN2/AN1 >=(1+(theta*0.01)) && polarity == -1
             h(i) = 1;
+            
         end
     elseif p == 4 
         
         AN1 = Area(1) + Area(4);
         AN2 = Area(2) + Area(3);
         
-        if AN2/AN1 <=1/(1+theta) && polarity == 1
+        if AN2/AN1 <=1/(1+(theta*0.01)) &&  polarity == 1
             h(i) = 1;
+           
         end
-        if polarity == -1 && AN2/AN1 >=(1+theta)
+        if AN2/AN1 >=(1+(theta*0.01)) && polarity == -1
             h(i) = 1;
+            
         end
         
     end
+    
+%     diff
     
 end
 

@@ -1,15 +1,14 @@
 
-
-
 function P = viola_jones()
 
 PositiveTrainingPath = 'faces';
 NegativeTrainingPath = 'nonfaces';
 
-
 starttime = generate_datetime();
 
-trainig_face_limit = 1; 
+trainig_face_limit = 100;
+
+% trainig_face_limit = 4500;
 
 [I1 m] = readImages(PositiveTrainingPath,'pgm',trainig_face_limit);
 
@@ -26,43 +25,39 @@ feature_list= haarfeature(24);
 
 [feature_count n] = size(feature_list);
 
-% m = j;
-% l = 0;
-% feature_count = 10000;
+% feature_count = 50000;
 result = zeros(feature_count,13);
 
- i = 0;
+i = 0;
 
-for f_no = 1:feature_count
+for f_no =1:feature_count
     
     feature = feature_list(f_no,:);
-    
+ 
     lowest_err = 100;
     lowest_t = 0;
     
     
     w(1,1:m+l) = initialize_weight(m,l);
-    
     for p = 1:2
         
     polarity = -1;
     if p == 2
         polarity = 1;
     end
-    theta(1) = 0;
+    theta(1) = 1;
     max = 100 - theta(1);
+%     max = 3;
     for t = 1:max
         
         if t >1
             theta(t) = theta(t-1)+1;
         end
-        
-        
-        
+    
         h(t,:) = CheckForFeature(feature,I,theta(t),polarity);
+       
         epsilon(t) =calc_eps(h(t,:),y,w(t,:));
         alpha(t) = calc_alpha(epsilon(t));
-        
         
         error(t) = calculate_error(h(t,:),y,w(t,:));
         
@@ -104,29 +99,24 @@ for f_no = 1:feature_count
     value_fh = double(feature(6));
     value_w = double(feature(3));
     value_h = double(feature(4));
-    
-   
-   
+ 
     i = i+1;
     result(i,:)=[f_no,lowest_t,error(lowest_t),theta(lowest_t),alpha(lowest_t),epsilon(lowest_t),polarity,value_x ,value_y,value_fw ,value_fh,value_w ,value_h];
+    end 
     
-    end
 end
 
 
 % C = sortrows(result,4);
 
-C=result(result(:,4) >30, :);
-
-B = sortrows(C,3);
-
-R = B(1:2000,:);
+% C=result(result(:,4) >30, :);
+B = sortrows(result,3);
+R = B(1:10000,:);
 
 endtime = generate_datetime();
 generateTrainingDb(R,starttime,endtime,trainig_face_limit,feature_count);
 
 end
-
 
 function dt = generate_datetime()
 
@@ -351,7 +341,7 @@ features = [2,1;1,2;3,1;1,3;2,2];
 [featureQuantity,n] = size(features);
 
 % feature_list = zeros(141600,6,'uint32');
-feature_list = zeros(162336,6,'uint32');
+% feature_list = zeros(162336,6,'uint32');
 t = 0;
 
 for f=1:featureQuantity
@@ -391,6 +381,12 @@ Area = zeros(fw*fh+1,1);
 dx = width/fw;
 dy = height/fh;
 
+
+% if theta == 55
+%    
+%     theta;
+% end
+
 % threshhold = 0.5;
 [asf kjh number_of_image]=size(Integral);
 
@@ -423,42 +419,48 @@ for i=1:number_of_image
     
     if p == 2
         
-        AN1 = abs(Area(1)-Area(2));
-        AN2 = abs(Area(1)+Area(2));
-        if AN2/AN1 <=1/(1+theta) && polarity == 1
+        AN1 = Area(1);
+        AN2 = Area(2);
+        if AN2/AN1 <=1/(1+(theta*0.01)) && polarity == 1
             
             h(i) = 1;
+            
         end
         
-        if polarity == -1 && AN2/AN1 >=(1+theta)
+        if AN2/AN1 >=(1+(theta*0.01)) && polarity == -1
             
             h(i) = 1;
+            
         end
         
     elseif p == 3
         
         AN = Area(3)+Area(1);
-        AN = AN/2;
+        AN1 = AN/2;
         
-        AN1 = abs(AN-Area(2));
-        AN2 = abs(AN+Area(2));
+       
+        AN2 = Area(2);
         
-        if AN2/AN1 <=1/(1+theta) && polarity == 1
+        if AN2/AN1 <=1/(1+(theta*0.01)) && polarity == 1
             h(i) = 1;
+            
         end
-        if polarity == -1 && AN2/AN1 >=(1+theta)
+        if AN2/AN1 >=(1+(theta*0.01)) && polarity == -1
             h(i) = 1;
+            
         end
     elseif p == 4 
         
         AN1 = Area(1) + Area(4);
         AN2 = Area(2) + Area(3);
         
-        if AN2/AN1 <=1/(1+theta) && polarity == 1
+        if AN2/AN1 <=1/(1+(theta*0.01)) &&  polarity == 1
             h(i) = 1;
+           
         end
-        if polarity == -1 && AN2/AN1 >=(1+theta)
+        if AN2/AN1 >=(1+(theta*0.01)) && polarity == -1
             h(i) = 1;
+            
         end
         
     end
@@ -511,6 +513,3 @@ for x = 1: m
     end
 end
 end
-
-
-
