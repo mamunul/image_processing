@@ -1,16 +1,9 @@
 
 function P = viola_jones()
 
-
-
-
-docNode = com.mathworks.xml.XMLUtils.createDocument('face-detection');
-
-entry_node = docNode.createElement('feature-list');
-
-
-
-
+% docNode = com.mathworks.xml.XMLUtils.createDocument('face-detection');
+% 
+% entry_node = docNode.createElement('feature-list');
 
 PositiveTrainingPath = 'faces';
 NegativeTrainingPath = 'nonfaces';
@@ -19,12 +12,12 @@ NegativeTrainingPath = 'nonfaces';
 starttime = generate_datetime();
 % trainig_face_limit = 20;
 
-trainig_face_limit = 2000;
+trainig_face_limit = 200;
 
 [I1 m] = readImages(PositiveTrainingPath,'pgm',trainig_face_limit);
 
 [I2 l] = readImages(NegativeTrainingPath,'pgm',trainig_face_limit);
-feature_limit = 0;
+feature_limit = 3000;
 feature_list= haarfeature(24,feature_limit);
 f = 0.50; %false positive rate per cascade layer
 d = 0.90; %detection rate per cascade layer
@@ -70,12 +63,20 @@ while F(i) > Ft
     end
    
   
-  cascade_node  = docNode.createElement('cascade');
-    for j = 1:s
-        feature_node =  create_feature_node(docNode,cascade_node,cascade(j,:));
-        cascade_node.appendChild(feature_node);
-    end
-     entry_node.appendChild(cascade_node);
+%   cascade_node  = docNode.createElement('cascade');
+%     for j = 1:s
+%         feature_node =  create_feature_node(docNode,cascade_node,cascade(j,:));
+%         cascade_node.appendChild(feature_node);
+%     end
+%      entry_node.appendChild(cascade_node);
+     
+          n = 0
+if i >2
+    
+[m n p] = size(whole_cascade);
+end
+     [m p] = size(cascade);
+     whole_cascade(n+1:n+m,:,i-1) = cascade;
      
      
        if F(i) > Ft
@@ -95,33 +96,33 @@ endtime = generate_datetime();
 
 
 
-docNode.getDocumentElement.appendChild(entry_node);
-sin11 = create_single_node(docNode,entry_node,'code-link','https://github.com/mamunul/image_processing.git');
-docNode.getDocumentElement.appendChild(sin11);
+% docNode.getDocumentElement.appendChild(entry_node);
+% sin11 = create_single_node(docNode,entry_node,'code-link','https://github.com/mamunul/image_processing.git');
+% docNode.getDocumentElement.appendChild(sin11);
+% 
+% sin12 = create_single_node(docNode,entry_node,'trainig-face-quantity',trainig_face_limit);
+% docNode.getDocumentElement.appendChild(sin12);
+% 
+% sin14 = create_single_node(docNode,entry_node,'trainig-nonface-quantity',trainig_face_limit);
+% docNode.getDocumentElement.appendChild(sin14);
+% 
+% sin13 = create_single_node(docNode,entry_node,'feature-count',feature_limit);
+% docNode.getDocumentElement.appendChild(sin13);
+% 
+% sin1 = create_single_node(docNode,entry_node,'count',i-1);
+% docNode.getDocumentElement.appendChild(sin1);
+% %
+% sin2 = create_single_node(docNode,entry_node,'start-time',starttime);
+% docNode.getDocumentElement.appendChild(sin2);
+% %
+% sin3 = create_single_node(docNode,entry_node,'end-time',endtime);
+% docNode.getDocumentElement.appendChild(sin3);
 
-sin12 = create_single_node(docNode,entry_node,'trainig-face-quantity',trainig_face_limit);
-docNode.getDocumentElement.appendChild(sin12);
+% xmlFileName = ['facedetection','.xml'];
+% xmlwrite(xmlFileName,docNode);
+% type(xmlFileName);
 
-sin14 = create_single_node(docNode,entry_node,'trainig-nonface-quantity',trainig_face_limit);
-docNode.getDocumentElement.appendChild(sin14);
-
-sin13 = create_single_node(docNode,entry_node,'feature-count',feature_limit);
-docNode.getDocumentElement.appendChild(sin13);
-
-sin1 = create_single_node(docNode,entry_node,'count',i-1);
-docNode.getDocumentElement.appendChild(sin1);
-%
-sin2 = create_single_node(docNode,entry_node,'start-time',starttime);
-docNode.getDocumentElement.appendChild(sin2);
-%
-sin3 = create_single_node(docNode,entry_node,'end-time',endtime);
-docNode.getDocumentElement.appendChild(sin3);
-
-xmlFileName = ['facedetection','.xml'];
-xmlwrite(xmlFileName,docNode);
-type(xmlFileName);
-
-% generateTrainingDb(current_cascade,starttime,endtime,trainig_face_limit,feature_count);
+generateTrainingDb(whole_cascade,starttime,endtime,trainig_face_limit,feature_limit);
 
 end
 
@@ -481,14 +482,14 @@ dt = [num2str(c(1)),'-',num2str(c(2)),'-',num2str(c(3)),' ',num2str(c(4)),':',nu
 
 end
 
-function s = generateTrainingDb(R,starttime,endtime,trainig_face_limit,feature_count)
+function s = generateTrainingDb(whole_cascade,starttime,endtime,trainig_face_limit,feature_count)
 
 docNode = com.mathworks.xml.XMLUtils.createDocument('face-detection');
 
 entry_node = docNode.createElement('feature-list');
 docNode.getDocumentElement.appendChild(entry_node);
 
-[m n] = size(R);
+[m n p] = size(whole_cascade);
 
 sin11 = create_single_node(docNode,entry_node,'code-link','https://github.com/mamunul/image_processing.git');
 docNode.getDocumentElement.appendChild(sin11);
@@ -511,11 +512,25 @@ docNode.getDocumentElement.appendChild(sin2);
 sin3 = create_single_node(docNode,entry_node,'end-time',endtime);
 docNode.getDocumentElement.appendChild(sin3);
 
-for i = 1:m
-    
-    feature_node =  create_feature_node(docNode,entry_node,R(i,:));
-    entry_node.appendChild(feature_node);
+
+for i = 1:p
+  cascade = whole_cascade(:,:,p);
+
+  cascade_node  = docNode.createElement('cascade');
+    for j = 1:m
+        if cascade(j,1)  == 0
+            continue;
+        end
+        feature_node =  create_feature_node(docNode,cascade_node,cascade(j,:));
+        cascade_node.appendChild(feature_node);
+    end
+     entry_node.appendChild(cascade_node);
 end
+% for i = 1:m
+%     
+%     feature_node =  create_feature_node(docNode,entry_node,R(i,:));
+%     entry_node.appendChild(feature_node);
+% end
 
 xmlFileName = ['facedetection','.xml'];
 xmlwrite(xmlFileName,docNode);
