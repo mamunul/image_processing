@@ -17,9 +17,9 @@ NegativeTrainingPath = 'nonfaces';
 
 
 starttime = generate_datetime();
-trainig_face_limit = 20;
+% trainig_face_limit = 20;
 
-% trainig_face_limit = 2000;
+trainig_face_limit = 2000;
 
 [I1 m] = readImages(PositiveTrainingPath,'pgm',trainig_face_limit);
 
@@ -69,17 +69,26 @@ while F(i) > Ft
         end
     end
    
-    if F(i) > Ft
-        
-        I2 = evaluate_on_nonface(cascade,I2);
-        
-    end
+  
   cascade_node  = docNode.createElement('cascade');
     for j = 1:s
         feature_node =  create_feature_node(docNode,cascade_node,cascade(j,:));
         cascade_node.appendChild(feature_node);
     end
      entry_node.appendChild(cascade_node);
+     
+     
+       if F(i) > Ft
+        
+        I2 = evaluate_on_nonface(cascade,I2);
+        
+       end
+    
+       [p q r]= size(I2);
+       
+       if r == 0
+           break;
+       end
 
 end
 endtime = generate_datetime();
