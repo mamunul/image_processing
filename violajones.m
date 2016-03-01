@@ -1,128 +1,149 @@
 
+
+
 function P = viola_jones()
 
-% docNode = com.mathworks.xml.XMLUtils.createDocument('face-detection');
-% 
-% entry_node = docNode.createElement('feature-list');
 
 PositiveTrainingPath = 'faces';
 NegativeTrainingPath = 'nonfaces';
 
+global bgImageArray
+bgImageArray = readBgImages('nonfacecollection');
+
 
 starttime = generate_datetime();
-% trainig_face_limit = 20;
+% trainig_face_limit = 500;
 
-trainig_face_limit = 200;
+trainig_face_limit = 1000;
 
-[I1 m] = readImages(PositiveTrainingPath,'pgm',trainig_face_limit);
+trainig_nonface_limit = 1000;
 
-[I2 l] = readImages(NegativeTrainingPath,'pgm',trainig_face_limit);
-feature_limit = 3000;
+% getNewNegativeImage('/Users/mamunul/Downloads/Face Database/nonfacecollection');
+
+
+[I1 m] = readPImages(PositiveTrainingPath,'pgm',trainig_face_limit);
+
+I2 = 0;
+feature_limit = -1;
 feature_list= haarfeature(24,feature_limit);
-f = 0.50; %false positive rate per cascade layer
-d = 0.90; %detection rate per cascade layer
-Ft = 0.000006; %overall false positive rate
+f = 0.30; %false positive rate per cascade layer
+d = 0.99; %detection rate per cascade layer
+Ft = 0.0000006; %overall false positive rate
 F(1) = 1;
 D(1) = 1;
 i = 1;
 j = 0;
 new_thresh = 0;
-while F(i) > Ft
+while F(i) > Ft || i < 10
     i = i+1;
     n = 10;
     F(i) = F(i-1);
     new_thresh = 0;
+    
+    [g h kl] = size(I2)
+    [I22 l] = readNImages(bgImageArray,trainig_nonface_limit-kl);
+    
+    if kl >1
+        
+        I2 = cat(3,I2,I22);
+    else
+        I2 = I22;
+    end
+    
+    [p q r]= size(I2);
+      if r < trainig_nonface_limit
+        break;
+    end
     while F(i) > f*F(i-1)
-        rrr=F(i) > f*F(i-1)
+        
         n = n+10;
         current_cascade = adaboost(I1,I2,feature_list,n);
         [p q] = size(current_cascade);
         for s = 1:p
-        cascade(1:s,:) = current_cascade(1:s,:);
-        [cf cd] = evaluate_cascade(cascade,I1,I2);
-        
-        F(i) = cf;
-        D(i) = cd;
-        new_thresh = decrease_threshold(d*D(i-1),cascade,I1);
-        
-        [p q] = size(cascade);
-    
-        
-        cascade(p,2) = new_thresh;
-        
-        [cf cd] = evaluate_cascade(cascade,I1,I2);
-        
-        F(i) = cf;
-        D(i) = cd;
-        
-        if F(i) <= f*F(i-1) && cd >= d*D(i-1)
-            break;
-        end
-        
+            cascade(1:s,:) = current_cascade(1:s,:);
+            new_thresh = 0;
+            for r = 1:s
+                new_thresh = new_thresh + cascade(r,5);
+            end
+            
+            for r = 1:s
+                cascade(r,2) = new_thresh;
+            end
+            
+            [cf cd] = evaluate_cascade(cascade,I1,I2);
+            
+            F(i) = cf;
+            D(i) = cd;
+            new_thresh = decrease_threshold(d*D(i-1),cascade,I1);
+            
+            [p q] = size(cascade);
+            
+            for r = 1:p
+                cascade(r,2) = new_thresh;
+            end
+            
+            [cf cd] = evaluate_cascade(cascade,I1,I2);
+            
+            F(i) = cf;
+            D(i) = cd;
+            
+            if F(i) <= f*F(i-1) && cd >= d*D(i-1)
+                break;
+            end
+            
         end
     end
-   
-  
-%   cascade_node  = docNode.createElement('cascade');
-%     for j = 1:s
-%         feature_node =  create_feature_node(docNode,cascade_node,cascade(j,:));
-%         cascade_node.appendChild(feature_node);
-%     end
-%      entry_node.appendChild(cascade_node);
-     
-          n = 0
-if i >2
     
-[m n p] = size(whole_cascade);
-end
-     [m p] = size(cascade);
-     whole_cascade(n+1:n+m,:,i-1) = cascade;
-     
-     
-       if F(i) > Ft
+    
+    n = 0
+    if i >2
+        
+        [m n p] = size(whole_cascade);
+    end
+    
+    [m p] = size(cascade);
+    whole_cascade(n+1:n+m,:,i-1) = cascade;
+    
+    
+    if F(i) > Ft
         
         I2 = evaluate_on_nonface(cascade,I2);
         
-       end
+    end
+    clear cascade;
     
-       [p q r]= size(I2);
-       
-       if r == 0
-           break;
-       end
-
+    
+  if i > 12
+      break;
+  end
+    
 end
 endtime = generate_datetime();
 
-
-
-% docNode.getDocumentElement.appendChild(entry_node);
-% sin11 = create_single_node(docNode,entry_node,'code-link','https://github.com/mamunul/image_processing.git');
-% docNode.getDocumentElement.appendChild(sin11);
-% 
-% sin12 = create_single_node(docNode,entry_node,'trainig-face-quantity',trainig_face_limit);
-% docNode.getDocumentElement.appendChild(sin12);
-% 
-% sin14 = create_single_node(docNode,entry_node,'trainig-nonface-quantity',trainig_face_limit);
-% docNode.getDocumentElement.appendChild(sin14);
-% 
-% sin13 = create_single_node(docNode,entry_node,'feature-count',feature_limit);
-% docNode.getDocumentElement.appendChild(sin13);
-% 
-% sin1 = create_single_node(docNode,entry_node,'count',i-1);
-% docNode.getDocumentElement.appendChild(sin1);
-% %
-% sin2 = create_single_node(docNode,entry_node,'start-time',starttime);
-% docNode.getDocumentElement.appendChild(sin2);
-% %
-% sin3 = create_single_node(docNode,entry_node,'end-time',endtime);
-% docNode.getDocumentElement.appendChild(sin3);
-
-% xmlFileName = ['facedetection','.xml'];
-% xmlwrite(xmlFileName,docNode);
-% type(xmlFileName);
-
 generateTrainingDb(whole_cascade,starttime,endtime,trainig_face_limit,feature_limit);
+
+end
+
+function imageArray = getNewNegativeImage(path)
+
+m = 0;
+extension = '.jpg';
+TrainFiles = dir(path);
+for i = 1:size(TrainFiles,1)
+    
+    filename_compare_res = strfind(TrainFiles(i).name,extension);
+    
+    if isempty(filename_compare_res) ~=1
+        df = strcat(path,'/', TrainFiles(i).name);
+        image = imread(df);
+        
+        image = rgb2gray(image);
+        m=m+1;
+        
+    end
+    
+end
+
 
 end
 
@@ -131,20 +152,20 @@ function N_I2 = evaluate_on_nonface(current_cascade,I2)
 [m p n] = size(I2);
 
 
- j=0;
-    for i = 1:n
+j=0;
+for i = 1:n
+    
+    cf = detect_face(current_cascade,I2(:,:,i),0);
+    
+    
+    if cf == 1
+        j = j +1;
+        II = I2(:,:,i);
         
-        cf = detect_face(current_cascade,I2(:,:,i),0);
-        
-        
-        if cf == 1
-            j = j +1;
-            II = I2(:,:,i);
-            
-            N_I2(:,:,j) = II;
-        end
+        N_I2(:,:,j) = II;
     end
-   
+end
+
 
 end
 
@@ -154,8 +175,12 @@ function  best_threshold =decrease_threshold(required_d,current_cascade,I1)
 [m p n] = size(I1);
 
 [p q] = size(current_cascade);
+classifier_threshold = 0;
 
-classifier_threshold = current_cascade(p,2);
+for i = 1:p
+    
+    classifier_threshold = classifier_threshold + current_cascade(i,5);
+end
 
 min_thresh = 0;
 max_thresh = classifier_threshold;
@@ -165,9 +190,9 @@ cd = 0;
 bestcd = 0;
 best_threshold = 0;
 
-while (floor(max_thresh*1000) - floor(min_thresh*1000)) ~=0 
+while (floor(max_thresh*1000) - floor(min_thresh*1000)) ~=0
     threshold = (max_thresh + min_thresh)/2;
-%     threshold = 0.8472;
+    %     threshold = 0.8472;
     cd = 0;
     for i = 1:n
         
@@ -186,13 +211,13 @@ while (floor(max_thresh*1000) - floor(min_thresh*1000)) ~=0
         break;
     end
     
-%     if floor(cd*100) < int8(required_d *100)
-%         max_thresh = threshold;
-%     elseif floor(cd*100) > int8(required_d *100)
-%         min_thresh = threshold;
-
-
-
+    %     if floor(cd*100) < int8(required_d *100)
+    %         max_thresh = threshold;
+    %     elseif floor(cd*100) > int8(required_d *100)
+    %         min_thresh = threshold;
+    
+    
+    
     if (cd) < (required_d)
         max_thresh = threshold;
     elseif (cd) > (required_d)
@@ -280,8 +305,6 @@ y1 = ones(1,m);
 y2 = zeros(1,l);
 y = [y1,y2];
 
-
-
 [feature_count n] = size(feature_list);
 
 i = 0;
@@ -295,7 +318,7 @@ for f_no =1:feature_count
     feature_values(1:(m+l),1:2,f_no) = f_I;
 end
 
-result = zeros(NumberOfClassifier,13);
+result = zeros(NumberOfClassifier,14);
 w(1,1:m+l) = initialize_weight(m,l);
 
 classifier_threshold = 0;
@@ -349,14 +372,11 @@ for t = 1:NumberOfClassifier
     
     classifier_threshold = classifier_threshold + alpha(t);
     
-    result(t,:)=[t,classifier_threshold,err,theta(t),alpha(t),beta(t) ,polarity(t),value_x ,value_y,value_fw ,value_fh,value_w ,value_h];
-    %     end
+    result(t,:)=[t,classifier_threshold,err,theta(t),alpha(t),beta(t) ,polarity(t),value_x ,value_y,value_fw ,value_fh,value_w ,value_h,l];
+    
     
 end
-% for t = 1:NumberOfClassifier
-%     
-%     result(t,2) = classifier_threshold;
-% end
+
 end
 
 function fvw = fvplusweight(v,w)
@@ -503,8 +523,7 @@ docNode.getDocumentElement.appendChild(sin14);
 sin13 = create_single_node(docNode,entry_node,'feature-count',feature_count);
 docNode.getDocumentElement.appendChild(sin13);
 
-sin1 = create_single_node(docNode,entry_node,'count',m);
-docNode.getDocumentElement.appendChild(sin1);
+
 %
 sin2 = create_single_node(docNode,entry_node,'start-time',starttime);
 docNode.getDocumentElement.appendChild(sin2);
@@ -514,24 +533,49 @@ docNode.getDocumentElement.appendChild(sin3);
 
 
 for i = 1:p
-  cascade = whole_cascade(:,:,p);
-
-  cascade_node  = docNode.createElement('cascade');
-    for j = 1:m
-        if cascade(j,1)  == 0
-            continue;
+    ocascade = whole_cascade(:,:,i);
+    
+    [k l m] = size(ocascade);
+    l = 0;
+    for j = 1:k
+        if ocascade(j,1) ~=0
+            l = l +1;
+            cascade(l,:) = ocascade(j,:);
+            
         end
-        feature_node =  create_feature_node(docNode,cascade_node,cascade(j,:));
-        cascade_node.appendChild(feature_node);
     end
-     entry_node.appendChild(cascade_node);
+    
+    
+    
+    
+    cascade_node  = docNode.createElement('cascade');
+    
+    classifier_node  = docNode.createElement('classifier');
+    
+    for j = 1:l
+        
+        feature_node =  create_feature_node(docNode,classifier_node,cascade(j,:));
+        classifier_node.appendChild(feature_node);
+    end
+    
+    %     cascade(j,:) = cascade(m,2);
+    threshold = cascade(l,2);
+    training_nonface_count = cascade(l,14);
+    threshold_node = create_single_node(docNode,cascade_node,'threshold',threshold);
+    count_node = create_single_node(docNode,cascade_node,'count',l);
+    nonface_count_node = create_single_node(docNode,cascade_node,'nonface_count',training_nonface_count);
+    
+    cascade_node.appendChild(classifier_node);
+    %     cascade_node.appendChild(feature_node);
+    
+    cascade_node.appendChild(nonface_count_node);
+    cascade_node.appendChild(threshold_node);
+    cascade_node.appendChild(count_node);
+    entry_node.appendChild(cascade_node);
 end
-% for i = 1:m
-%     
-%     feature_node =  create_feature_node(docNode,entry_node,R(i,:));
-%     entry_node.appendChild(feature_node);
-% end
 
+sin1 = create_single_node(docNode,entry_node,'count',p);
+docNode.getDocumentElement.appendChild(sin1);
 xmlFileName = ['facedetection','.xml'];
 xmlwrite(xmlFileName,docNode);
 type(xmlFileName);
@@ -569,7 +613,7 @@ sin8 = create_single_node(docNode,feature_node,'fh',value_fh);
 sin9 = create_single_node(docNode,feature_node,'w',value_w);
 sin10 = create_single_node(docNode,feature_node,'h',value_h);
 
-feature_node.appendChild(sin0);
+% feature_node.appendChild(sin0);
 feature_node.appendChild(sin1);
 feature_node.appendChild(sin2);
 feature_node.appendChild(sin3);
@@ -591,7 +635,7 @@ ct_node.appendChild(count_text);
 % entry_node.appendChild(count_node);
 end
 
-function [I m] = readImages(path,extension,limit)
+function [I m] = readPImages(path,extension,limit)
 m = 0;
 TrainFiles = dir(path);
 for i = 1:size(TrainFiles,1)
@@ -613,6 +657,103 @@ for i = 1:size(TrainFiles,1)
     end
     
 end
+end
+
+function [I2 m] = readNImages(bgArray,limit)
+
+global bgImageArray
+[m n] = size(bgArray);
+I2 = 0;
+for i = 1:m
+    
+    path = bgArray(i);
+    
+    bgImage = imread(char(path));
+    
+    [w h c] = size(bgImage);
+    
+    bgImage = imresize(bgImage,[ceil(w/2) ceil(h/2)]);
+    
+    imgArray = scrollImage(bgImage);
+   [d e f] = size(I2);
+    if f > 1
+        I2 = cat(3,I2,imgArray);
+    else
+        I2 = imgArray;
+    end
+    bgImageArray(i) = '';
+    
+    [p q r] = size(I2);
+    
+    if limit < r
+        break;
+    else
+        
+    end
+end
+
+end
+
+function imgArray = scrollImage(image)
+
+[imgh imgw c] = size(image);
+
+width = 80;
+height = 80;
+k = 1;
+
+for  i = 1: ceil(height/3) : (imgw - height)
+    
+    for  j = 1: ceil(width/3) : (imgh - width)
+        
+        
+        % 		imshow(image);
+        
+        crop = imcrop(image,[i j width height]);
+        %                 imshow(crop);
+        crop = rgb2gray(crop);
+        
+        [m n] = size(crop);
+        
+        if m ~= 81 || n ~= 81 
+            sbc = 0;
+        end
+        
+        
+        
+       crop = imresize(crop,[24 24]);
+        imgArray(:,:,k) = crop(:,:);
+        k = k+1;
+    end
+    
+    
+end
+
+
+
+
+
+end
+
+function arr = readBgImages(path)
+limit = 190; extension = 'jpg';
+TrainFiles = dir(path);
+m = 0;
+%  arr(1,:) = 'sfsdf';
+for i = 1:size(TrainFiles,1)
+    
+    filename_compare_res = findstr(TrainFiles(i).name,extension);
+    if isempty(filename_compare_res) ~=1
+        df = strcat(path,'/', TrainFiles(i).name);
+        m=m+1;
+        arr(m,:) = cellstr(df);
+        
+        if m == limit
+            break;
+        end
+    end
+end
+
 end
 
 function nw = calc_weight(w,beta,values,thresh,p)
